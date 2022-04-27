@@ -1,0 +1,1287 @@
+<?php
+//allow svg
+function cgi_mime_types($mimes) {
+  // New allowed mime types.
+  $mimes['svg'] = 'image/svg+xml';
+  $mimes['svgz'] = 'image/svg+xml';
+  return $mimes;
+}
+add_filter( 'upload_mimes', 'cgi_mime_types' );
+
+// add team order columns
+function cgi_team_add_order_columns ( $columns ) {
+	  unset($columns['date']);
+	  unset($columns['title']);
+      return array_merge ( $columns, array ( 
+	   'title' => __('Name'),
+	    'cgi_member_image' => __('Image'),
+       'order_no' => __ (' Order No.' ),
+   ) );
+ }
+ add_filter ( 'manage_team_posts_columns', 'cgi_team_add_order_columns' );
+
+// add team order custom columns
+ function cgi_team_order_custom_column ( $column, $post_id ) {
+   switch ( $column ) {
+     case 'order_no':
+       echo get_post_meta ( $post_id, 'order_no', true );
+       break;
+	   case 'cgi_member_image':
+		echo '<img width="50px" src="'. get_field('cgi_member_image', $post_id )['sizes']['thumbnail'] .'" />';
+	   break;
+   }
+}
+add_action ( 'manage_team_posts_custom_column', 'cgi_team_order_custom_column', 10, 2 );
+
+// add team order sortable 
+function cgi_team_sort_columns( $columns ) {
+	$columns['order_no'] = 'order_no';
+	return $columns;
+}
+add_filter('manage_edit-team_sortable_columns', 'cgi_team_sort_columns' );
+
+//Templates and Page IDs without editor
+function cgi_disable_editor( $id = false ) {
+
+	$excluded_templates = array(
+		'templates/about.php',
+		'templates/leadership.php'
+	);
+
+	$excluded_ids = array(
+		// get_option( 'page_on_front' )
+	);
+
+	if( empty( $id ) )
+		return false;
+
+	$id = intval( $id );
+	$template = get_page_template_slug( $id );
+
+	return in_array( $id, $excluded_ids ) || in_array( $template, $excluded_templates );
+}
+
+//Disable Gutenberg by template
+function cgi_disable_gutenberg( $can_edit, $post_type ) {
+
+	if( ! ( is_admin() && !empty( $_GET['post'] ) ) )
+		return $can_edit;
+
+	if( cgi_disable_editor( $_GET['post'] ) )
+		$can_edit = false;
+
+	return $can_edit;
+
+}
+add_filter( 'gutenberg_can_edit_post_type', 'cgi_disable_gutenberg', 10, 2 );
+add_filter( 'use_block_editor_for_post_type', 'cgi_disable_gutenberg', 10, 2 );
+
+//page-blog pagination
+function pagination_bar($query){
+	$big = 999999999;
+     echo paginate_links( array(
+          'base' => str_replace( $big, '%#%', get_pagenum_link( $big ) ),
+          'format' => '?paged=%#%',
+          'current' => max( 1, get_query_var('paged') ),
+          'total' => $query->max_num_pages,
+          'prev_text' => ' &laquo;',
+          'next_text' => ' &raquo;'
+     ) );
+}
+     
+			
+function case_study_archive_title( $title ) {
+
+    if( is_post_type_archive('case_studies') ) {
+
+        $title = 'Case Studies';
+
+    }
+
+    return $title;
+
+}
+add_filter( 'get_the_archive_title', 'case_study_archive_title');
+
+// Custom Functions
+function cgi_hero_banner_shortcode( $atts ) {
+	ob_start();
+	$a = shortcode_atts( array(
+		'cgi-color' => 'orange',
+		'cgi-get-banner' => '',
+		'cgi-content-size' => 'full',
+		'cgi-title-color' => 'white',
+		'cgi-title-weight' => 'bold',
+		'cgi-parent-title' => false,
+	), $atts );
+	
+	if (get_field('hero_banner')) :
+		$hero_banner_id = get_field('hero_banner');
+	elseif($a['cgi-get-banner']) :
+		$hero_banner_id = intval($a['cgi-get-banner']);
+	else:
+		$hero_banner_id = 5397;
+		
+	endif;
+	if($a['cgi-content-size']=='full'):
+		$col = 'col-md-12';
+	elseif($a['cgi-content-size']=='half'):
+		$col = 'col-md-6';
+	elseif($a['cgi-content-size']=='quarter'):
+		$col = 'col-md-3';
+	endif; ?>
+	<section class="cgi-hero-banner <?php echo $a['cgi-color'];?> " style="background: linear-gradient(0deg, rgba(69, 69, 69, .9), rgba(69, 69, 69, .9)), url(<?php echo get_field('hero_banner_background_image', $hero_banner_id)['url']; ?>)">
+		<div class="cgi-hero-banner-container d-flex align-items-center text-left ">
+			<div class="row w-100">
+				<div class="<?php echo $col; ?>">
+					<div class="cgi-hero-banner-title mb-4 d-md-flex align-items-md-center">
+						<?php if (get_field('add_hero_banner_image_beside_title', $hero_banner_id) && get_field('hero_banner_image', $hero_banner_id)): ?>
+						<div class="cgi-hero-banner-image" data-aos="fade-in" data-aos-easing="ease" data-aos-delay="100" data-aos-duration="1000">
+							<img class="img-fluid" src="<?php echo get_field('hero_banner_image', $hero_banner_id)['url']; ?>" title="<?php echo get_field('hero_banner_image', $hero_banner_id)['title']; ?>" alt="<?php echo get_field('hero_banner_image', $hero_banner_id)['alt']; ?>">
+						</div>
+						<?php endif ?>
+						
+						<?php if (get_field('use_custom_title_as_hero_banner_title', $hero_banner_id)): ?>
+						<h1 class="<?php echo $a['cgi-title-color']; ?> font-weight-<?php echo $a['cgi-title-weight']; ?> flex-grow-1" data-aos="fade-up" data-aos-easing="ease" data-aos-delay="200" data-aos-duration="1000"> <?php echo get_field('hero_banner_title', $hero_banner_id); ?> </h1>
+						<?php elseif($a['cgi-get-banner'] ): ?>
+						<span class="<?php echo $a['cgi-title-color']; ?> font-weight-<?php echo $a['cgi-title-weight']; ?> flex-grow-1" data-aos="fade-up" data-aos-easing="ease" data-aos-delay="200" data-aos-duration="1000"> <?php echo get_the_title(intval($a['cgi-get-banner'])); ?> </span>
+						<?php elseif( is_post_type_archive('case_studies') ): ?>
+						<h1 class="<?php echo $a['cgi-title-color']; ?> font-weight-<?php echo $a['cgi-title-weight']; ?> flex-grow-1" data-aos="fade-up" data-aos-easing="ease" data-aos-delay="200" data-aos-duration="1000"> <?php echo 'Case Studies'; ?> </h1>
+						<?php else: ?>
+						<h1 class="<?php echo $a['cgi-title-color']; ?> font-weight-<?php echo $a['cgi-title-weight']; ?> flex-grow-1" data-aos="fade-up" data-aos-easing="ease" data-aos-delay="200" data-aos-duration="1000"><?php echo get_the_title(); ?> </h1>
+						<?php endif; ?>
+				
+					</div>
+					<?php 
+							$button             = get_field('cgi_banner_button', $hero_banner_id );
+							$button_display     = $button['display_button'];
+							$button_normal_text = $button['banner_button']['banner_button_text'];
+							$button_normal_url  = $button['banner_button']['banner_button_url'];
+							$button_popup_url   = $button['banner_popup']['banner_popup_videoURL']; 
+
+						?>
+						
+	
+						<?php	if($button_display === 'normal-button' && $button_normal_text && $button_normal_url): ?>
+							<div class="cgi-banner-button">
+								<a href="<?php echo esc_url($button_normal_url) ?>"  class="banner-content-btn btn btn-outline-white rounded-pill keychainify-checked"><?php echo $button_normal_text ?></a>
+							</div>
+						<?php endif; ?>
+						
+						<?php if($button_display === 'popup' && $button_popup_url  ) : ?>
+						   <div class="cgi-banner-popup">
+							   <a href="#"  class="banner-content-btn btn-video-lightbox d-inline-flex align-items-center justify-content-center justify-content-md-start"  data-toggle="modal" data-src="<?php echo esc_url($button_popup_url) ?>" data-target="#cgi-banner-modal"> 
+								   <span class="btn-text">Play Now</span> 
+								   <span class="icon-play-circle-outline"></span>
+							   </a>
+							   <!-- Modal -->
+							   <div class="modal fade" id="cgi-banner-modal" tabindex="-1" role="dialog" aria-labelledby="cgibanner" aria-hidden="true">
+								   <div class="modal-dialog modal-dialog-centered" role="document">
+									   <div class="modal-content">
+										   <div class="modal-body">
+											   <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+												   <span aria-hidden="true">&times;</span>
+											   </button>        
+											   <!-- 16:9 aspect ratio -->
+											   <div class="embed-responsive embed-responsive-16by9">
+												   <iframe class="embed-responsive-item" src="" id="video"  allowscriptaccess="always" allow="autoplay"></iframe>
+											   </div>
+										   </div>
+									   </div>
+								   </div>
+							   </div> 
+						</div>
+					<?php endif; ?>
+				
+					</div>
+				</div>
+			</div>
+		<?php if (get_field('display_hero_banner_statistics', $hero_banner_id) && have_rows('hero_banner_statistics', $hero_banner_id)): ?>
+		<div class="cgi-hero-banner-statistics-container">
+			<div class="cgi-hero-banner-statistics owl-carousel owl-theme">
+			<?php while(have_rows('hero_banner_statistics', $hero_banner_id)) : the_row(); ?>
+				<?php if (get_sub_field('hero_statistics_number') && get_sub_field('hero_statistics_label')): ?>
+					<p class="cgi-hero-banner-statistic d-inline-block m-0">
+						<b><?php echo get_sub_field('hero_statistics_number'); ?></b>
+						<span><?php echo get_sub_field('hero_statistics_label'); ?></span>
+					</p>
+				<?php endif ?>
+			<?php endwhile; ?>
+			</div>
+		</div>
+		<?php endif ?>
+	</section>
+
+	<?php return ob_get_clean();
+}
+add_shortcode( 'cgi-hero-banner', 'cgi_hero_banner_shortcode' );
+
+function cgi_services_shortcode( $atts ) {
+	ob_start();
+	$a = shortcode_atts( array(
+		'cgi-color' => 'orange',
+		'cgi-background' => 'inherit',
+		'cgi-title' => 'Our Services',
+		'cgi-title-color' => 'daintree',
+		'cgi-title-weight' => 'bold',
+		'cgi-addclass' => ' '
+	), $atts );
+	//echo "Hello World";
+	$query = new WP_Query( array(
+		'post_type' => 'services',
+		'post_status' => 'publish',
+		'posts_per_page' => 6,
+		'orderby' => 'date',
+		'order'   => 'ASC',
+	));
+	if ($query->have_posts()): ?>
+	<section class="our-services section-padding <?php echo $a['cgi-color'];?> background-<?php echo $a['cgi-background'];?> <?php echo $a['cgi-addclass'] ?>">
+		<div class="container">
+			<div class="section-headline">
+				<h2 class="section-title <?php echo $a['cgi-title-color']; ?> font-weight-<?php echo $a['cgi-title-weight']; ?>">
+					<?php echo $a['cgi-title']; ?>
+				</h2>
+			</div>
+			<div class="row card-article-items owl-carousel owl-theme">
+				<?php  $count = 1; ?>
+				<?php while ($query->have_posts()) : $query->the_post(); ?>
+				<?php $countL = $count++ * 100; ?>
+				<div class="card-article-item  card-article-item-no-image col-md-6 col-lg-4" data-aos="fade-up"  data-aos-duration="1000"
+    data-aos-offset="200"
+    data-aos-delay=<?php echo $countL ?> 
+    data-aos-easing="ease">
+					<div class="card-article-item-content">
+						<?php if (get_the_title()): ?>
+							<h3 class="card-article-item-content-title">
+								<?php echo get_the_title(); ?>
+							</h3>
+						<?php endif ?>
+						<?php if (get_field('service_excerpt')): ?>
+							<p class="card-article-item-content-description">
+								<?php echo get_field('service_excerpt'); ?>
+							</p>	
+						<?php endif ?>
+						<a href="<?php echo get_the_permalink(); ?>" class="btn-learnmore">
+							<span class="btn-text">Learn More</span> <span class="icon-cg-more-right"></span>
+						</a>
+					</div>
+				</div>
+				
+				<?php endwhile; ?>
+				<?php wp_reset_postdata(); ?>
+			</div>
+		</div>
+	</section>
+	<?php endif;
+	return ob_get_clean();
+}
+add_shortcode( 'cgi-services', 'cgi_services_shortcode' );
+
+
+
+
+function cgi_industries_shortcode( $atts ) {
+	ob_start();
+	$a = shortcode_atts( array(
+		'cgi-color' => 'orange',
+		'cgi-background' => 'inherit',
+		'cgi-title' => 'Our Services',
+		'cgi-title-color' => 'daintree',
+		'cgi-title-weight' => 'bold',
+		'cgi-addclass' => ' '
+	), $atts );
+	//echo "Hello World";
+	$query = new WP_Query( array(
+		'post_type' => 'industries',
+		'post_status' => 'publish',
+		'posts_per_page' => 6,
+		'orderby' => 'date',
+		'order'   => 'ASC',
+	));
+	if ($query->have_posts()): ?>
+	<section class="our-services section-padding <?php echo $a['cgi-color'];?> background-<?php echo $a['cgi-background'];?> <?php echo $a['cgi-addclass'] ?>">
+		<div class="container">
+			<div class="section-headline">
+				<h2 class="section-title <?php echo $a['cgi-title-color']; ?> font-weight-<?php echo $a['cgi-title-weight']; ?>">
+					<?php echo $a['cgi-title']; ?>
+				</h2>
+			</div>
+			<div class="row card-article-items owl-carousel owl-theme">
+				<?php  $count = 1; ?>
+				<?php while ($query->have_posts()) : $query->the_post(); ?>
+				<?php $countL = $count++ * 100; ?>
+				<div class="card-article-item  card-article-item-no-image col-md-6 col-lg-4" data-aos="fade-up"  data-aos-duration="1000"
+    data-aos-offset="200"
+    data-aos-delay=<?php echo $countL ?> 
+    data-aos-easing="ease">
+					<div class="card-article-item-content">
+						<?php if (get_the_title()): ?>
+							<h3 class="card-article-item-content-title">
+								<?php echo get_the_title(); ?>
+							</h3>
+						<?php endif ?>
+						<?php if (get_field('industry_excerpt')): ?>
+							<p class="card-article-item-content-description">
+								<?php echo get_field('industry_excerpt'); ?>
+							</p>	
+						<?php endif ?>
+						<a href="<?php echo get_the_permalink(); ?>" class="btn-learnmore">
+							<span class="btn-text">Learn More</span> <span class="icon-cg-more-right"></span>
+						</a>
+					</div>
+				</div>
+				
+				<?php endwhile; ?>
+				<?php wp_reset_postdata(); ?>
+			</div>
+		</div>
+	</section>
+	<?php endif;
+	return ob_get_clean();
+}
+add_shortcode( 'cgi-industries', 'cgi_industries_shortcode' );
+
+
+
+
+
+
+
+
+
+function cgi_case_studies_shortcode( $atts ) {
+	ob_start();
+	$cgi_industry = '';
+	$cgi_services = '';
+	if (is_singular('industries')) {
+		$cgi_industry = get_the_ID();
+		$filter_by_args = array(
+			'post_type' => 'services',
+			'post_status' => 'publish',
+			'posts_per_page' => -1,
+			'orderby' => 'post_title',
+			'order'   => 'ASC',
+		);
+	}
+	if (is_singular('services')) {
+		$cgi_services = get_the_ID();
+		$filter_by_args = array(
+			'post_type' => 'industries',
+			'post_status' => 'publish',
+			'posts_per_page' => -1,
+			'orderby' => 'post_title',
+			'order'   => 'ASC',
+		);
+	}
+	$a = shortcode_atts( array(
+		'cgi-industry' => $cgi_industry,
+		'cgi-service' => $cgi_services,
+		'cgi-color' => 'orange',
+		'cgi-background' => 'inherit',
+		'cgi-title' => 'Case Studies',
+		'cgi-title-color' => 'daintree',
+		'cgi-title-weight' => 'bold',
+		'cgi-show' => 6,
+		'cgi-addclass' => ''
+	), $atts );
+	//echo "Hello World";
+	$args = array(
+		'post_type' => 'case_studies',
+		'post_status' => 'publish',
+		'posts_per_page' => $a['cgi-show'],
+		'orderby' => 'date',
+		'order'   => 'DESC',
+	);
+	if ($a['cgi-industry']) {
+		$args['meta_query'][] = array(
+					'key' => 'case_study_industry',
+					'value' => $a['cgi-industry'],
+					'compare' => 'LIKE',
+			);
+	}
+	if ($a['cgi-service']) {
+		$args['meta_query'][] = array(
+					'key' => 'case_study_service',
+					'value' => $a['cgi-service'],
+					'compare' => 'LIKE',
+			);
+	}
+	$query = new WP_Query($args);
+	if ($query->have_posts()): ?>
+	<section class="case-studies section-padding <?php echo $a['cgi-color'];?> background-<?php echo $a['cgi-background'];?> <?php echo $a['cgi-addclass']; ?>">
+		<div class="container">
+			<div class="section-headline">
+				<h2 class="section-title <?php echo $a['cgi-title-color']; ?> font-weight-<?php echo $a['cgi-title-weight']; ?>">
+					<?php echo $a['cgi-title']; ?>
+				</h2>
+				<button class="case-studies-filter btn-filter">
+					<svg xmlns="http://www.w3.org/2000/svg" width="36.259" height="35.857" viewBox="0 0 36.259 35.857">
+						<path id="Path_907" data-name="Path 907" d="M9.228.571a5.012,5.012,0,0,0-4.808,3.7H1.83a1.3,1.3,0,1,0,0,2.59H4.415a4.975,4.975,0,0,0,9.609.063L35.5,6.864a1.3,1.3,0,0,0,0-2.59l-21.437.063A5.018,5.018,0,0,0,9.228.571Zm0,2.59A2.414,2.414,0,1,1,6.815,5.574,2.394,2.394,0,0,1,9.228,3.161Zm13.836,9.925a5.076,5.076,0,0,0-4.879,3.769H1.83a1.3,1.3,0,1,0,0,2.59H18.187a5.039,5.039,0,0,0,9.753,0H35.5a1.3,1.3,0,0,0,0-2.59H27.943a5.076,5.076,0,0,0-4.879-3.769Zm0,2.59a2.475,2.475,0,1,1-2.479,2.471A2.453,2.453,0,0,1,23.064,15.676ZM13,26.289A5.083,5.083,0,0,0,8.12,30.058H1.83a1.3,1.3,0,1,0,0,2.59H8.118a5.041,5.041,0,0,0,9.761,0H35.5a1.3,1.3,0,0,0,0-2.59H17.876A5.08,5.08,0,0,0,13,26.289Zm0,2.59a2.479,2.479,0,1,1-2.479,2.479A2.46,2.46,0,0,1,13,28.88Z" transform="translate(-0.529 -0.571)" fill="#4dbf7e"/>
+					  </svg>					  
+				</button>
+			</div>
+			<div class="row case-studies-search-filter-container mb-4">
+				<div class="col d-flex justify-content-end">
+					<form class="form-inline case-studies-search-filter">
+						<div class="form-group mr-2">
+							<?php $filter_query = new WP_Query($filter_by_args);
+							if ($filter_query->have_posts()): ?>
+							<select class="case-studies-filter-by" name="case_studies_filter_by">
+								<option value="">
+									Select Filter By
+								</option>
+								<?php while ($filter_query->have_posts()) : $filter_query->the_post(); ?>
+								<option value="<?php echo get_the_ID(); ?>">
+									<?php echo get_the_title(); ?>
+								</option>
+								<?php endwhile;
+								wp_reset_postdata(); ?>
+							</select>
+							<?php endif; ?>
+						</div>
+						<div class="form-group mr-2">
+							<input type="text" class="case-studies-search" name="case_studies_search">
+							<input type="hidden" name="cgi_industry" value="<?php echo $a['cgi-industry']; ?>">
+							<input type="hidden" name="cgi_service" value="<?php echo $a['cgi-service']; ?>">
+						</div>
+						<div class="form-group mr-3">
+							<button type="submit">
+								<i class="fa fa-search"></i>
+							</button>
+						</div>
+					</form>
+				</div>
+			</div>
+			<div class="row card-article-items owl-carousel owl-theme">
+				<?php while ($query->have_posts()) : $query->the_post(); ?>
+				<div class="card-article-item col-md-6">
+					<div class="card-article-item-image">
+						<?php
+							$img = get_field('case_featured_image', get_the_ID());
+						?>
+						<?php if($img['sizes']['case-study-thumb']):
+							$case_study_image =  esc_url($img['sizes']['case-study-thumb']);
+						else:
+							$case_study_image = '/wp-content/uploads/2022/03/AdobeStock_313381129.jpg';
+						endif; ?>
+						<img src="<?php echo $case_study_image; ?>" alt="<?= get_the_title() ?>"  data-aos="fade-in" data-aos-easing="ease" data-aos-delay="200" data-aos-duration="1000">
+					</div>
+					<div class="card-article-item-content" data-aos="fade-up" data-aos-easing="ease" data-aos-delay="300" data-aos-duration="1000">
+						<?php if (get_the_title()): ?>
+							<h3 class="card-article-item-content-title">
+								<?php echo get_the_title(); ?>
+							</h3>
+						<?php endif ?>
+						<?php if (get_the_excerpt()): ?>
+							<p class="card-article-item-content-description">
+								<?php echo get_the_excerpt(); ?>
+							</p>	
+						<?php endif ?>
+						<a href="<?php echo get_the_permalink(); ?>" class="btn-learnmore">
+							<span class="btn-text">Learn More</span> <span class="icon-cg-more-right"></span>
+						</a>
+					</div>
+				</div>
+				<?php endwhile; ?>
+				<?php wp_reset_postdata(); ?>
+			</div>
+		</div>
+	</section>
+	<?php endif;
+	return ob_get_clean();
+}
+add_shortcode( 'cgi-case-studies', 'cgi_case_studies_shortcode' );
+
+function cgi_case_studies_search() {
+	// nonce
+	if( !check_ajax_referer( 'wp_nonce', 'security' ) ){ wp_die(); }
+	if( $_POST['action'] == 'cgi_case_studies_search' ):
+		$form_data = array();
+		parse_str($_POST['formData'], $form_data);
+		//print_r($form_data);
+		$args = array(
+			'post_type' => 'case_studies',
+			'post_status' => 'publish',
+			'posts_per_page' => -1,
+			'orderby' => 'date',
+			'order'   => 'DESC',
+			's' => $form_data['case_studies_search'],
+		);
+		// Industries
+		if ($form_data['cgi_industry']) {
+			// Filter By
+			if ($form_data['case_studies_filter_by']) {
+				$args['meta_query']['relation'] = 'AND';
+				$args['meta_query'][] = array(
+					'key' => 'case_study_service',
+					'value' => $form_data['case_studies_filter_by'],
+					'compare' => 'LIKE',
+				);	
+			}
+			// Industries Source
+			$args['meta_query'][] = array(
+				'key' => 'case_study_industry',
+				'value' => $form_data['cgi_industry'],
+				'compare' => 'LIKE',
+			);
+		}
+		// Services
+		if ($form_data['cgi_service']) {
+			// Filter By
+			if ($form_data['case_studies_filter_by']) {
+				$args['meta_query']['relation'] = 'AND';
+				$args['meta_query'][] = array(
+					'key' => 'case_study_industry',
+					'value' => $form_data['case_studies_filter_by'],
+					'compare' => 'LIKE',
+				);	
+			}
+			// Services Source
+			$args['meta_query'][] = array(
+				'key' => 'case_study_service',
+				'value' => $form_data['cgi_service'],
+				'compare' => 'LIKE',
+			);
+		}
+		//echo '<pre>';
+		//print_r($args);
+		//echo '</pre>';
+		$query = new WP_Query($args);
+		if ($query->have_posts()):
+			while ($query->have_posts()) : $query->the_post(); ?>
+			<div class="card-article-item col-md-6">
+				<div class="card-article-item-image" data-aos="fade-in" data-aos-easing="ease" data-aos-delay="200" data-aos-duration="1000">
+					<?php $img = get_field('case_featured_image', get_the_ID());?>
+					<?php if($img['sizes']['case-study-thumb']):
+						$case_study_image =  esc_url($img['sizes']['case-study-thumb']);
+					else:
+						$case_study_image = '/wp-content/uploads/2022/03/AdobeStock_313381129.jpg';
+					endif; ?>
+					<img src="<?php echo $case_study_image; ?>" alt="<?= get_the_title() ?>"  data-aos="fade-in" data-aos-easing="ease" data-aos-delay="200" data-aos-duration="1000">
+				</div>
+				<div class="card-article-item-content" data-aos="fade-up" data-aos-easing="ease" data-aos-delay="300" data-aos-duration="1000">
+					<?php if (get_the_title()): ?>
+						<h3 class="card-article-item-content-title">
+							<?php echo get_the_title(); ?>
+						</h3>
+					<?php endif ?>
+					<?php if (get_the_excerpt()): ?>
+						<p class="card-article-item-content-description">
+							<?php echo get_the_excerpt(); ?>
+						</p>	
+					<?php endif ?>
+					<a href="<?php echo get_the_permalink(); ?>" class="btn-learnmore">
+						<span class="btn-text">Learn More</span> <span class="icon-cg-more-right"></span>
+					</a>
+				</div>
+			</div>
+			<?php endwhile;
+			wp_reset_postdata(); 
+		else : ?>
+			<div class="col">
+				<p class="h2 m-0 p-0">
+					No result found.
+				</p>
+			</div>
+		<?php endif;
+	endif;
+	wp_die(); // this is required to return a proper result
+}
+
+add_filter( 'wp_ajax_nopriv_cgi_case_studies_search', 'cgi_case_studies_search' );
+add_filter( 'wp_ajax_cgi_case_studies_search', 'cgi_case_studies_search' );
+
+
+//team/leadership
+function cgi_team_search() {
+	// nonce
+	if( !check_ajax_referer( 'wp_nonce', 'security' ) ){ wp_die(); }
+	if( $_POST['action'] == 'cgi_team_search' ):
+		$form_data = array();
+		parse_str($_POST['formData'], $form_data);
+		//print_r($form_data);
+		$args = array(
+			'post_type' => 'team',
+			'post_status' => 'publish',
+			'posts_per_page' => -1,
+			'meta_key'	   => 'order_no',
+			'orderby'	   => 'meta_value_num',
+			'order'		   => 'ASC',
+			's' => $form_data['team_search']
+		);
+		
+			$query = new WP_Query($args);
+			if ($query->have_posts()): while ($query->have_posts()) : $query->the_post(); ?>
+			<div class="col-md-6 col-lg-4 team-item" data-aos="fade-up" data-aos-easing="ease" data-aos-duration="1000">
+				<div class="team-item-image">
+					<?php if(get_field('cgi_member_image', get_the_ID())):
+				$team_image = get_field('cgi_member_image', get_the_ID())['url'];
+				else:
+				$team_image = '/wp-content/uploads/2022/03/9e9d13d59cd96c4d06b80d4066ac6abd.jpg';
+				endif; ?>
+
+					<img src="<?php echo $team_image; ?>" />
+				</div>
+
+				<div class="team-item-info">
+
+					<?php if (get_the_title()): ?>
+					<h3 class="team-item-info-name">
+						<?php echo get_the_title(); ?>
+					</h3>
+					<?php endif ?>
+
+					<p class="team-item-info-role"><?php echo get_field('cgi_position', get_the_ID()) ?></p>
+
+					<div class="team-item-links d-flex justify-content-between align-items-end mt-3 ">
+						<div class="team-item-linkin">
+							<a href="<?php echo get_field('cgi_linkedin', get_the_ID()) ?>" target="_blank"><span class="icon-cg-linkedin"></span></a>
+						</div>
+						<div class="team-item-bio-link">
+							<a class="font-weight-bold btn-modal" data-toggle="modal" data-target="#bio-id-<?php echo get_the_ID(); ?>">Read Bio</a>		
+						</div>
+
+						<!-- Modal HTML embedded directly into document -->
+						<div id="bio-id-<?php echo get_the_ID(); ?>" class="leadership-modal modal fade px-2 px-sm-0">
+							<div class="modal-dialog modal-dialog-centered">
+								<div class="modal-content">
+									<div class="modal-body p-4">
+
+										<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+											<span aria-hidden="true">&times;</span>
+										</button>
+
+										<div class="d-sm-flex">
+											<img src="<?php echo $team_image; ?>" alt="get_the_title()" class="leadership-image-modal mr-4 mt-sm-3">
+
+											<div class="d-block">
+												<div class="d-flex justify-content-between">
+													<div class="align-self-stretch">
+														<h5 class="font-weight-bold orange mb-0"><?php echo get_the_title() ?></h5>
+														<p class="fi-team-member-content-role" style="font-style: italic; font-size: 16px;"><?php echo get_field('cgi_position', get_the_ID()) ?></p>
+													</div>
+													<div class="team-item-linkin align-self-center">
+														<a href="<?php echo get_field('cgi_linkedin', get_the_ID()) ?>" target="_blank"><span class="icon-cg-linkedin"></span></a>
+													</div>
+												</div>
+
+												<p><?php echo get_field('cgi_bio', get_the_ID())?></p>
+											</div>
+
+										</div>
+
+									</div>
+
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+			<?php endwhile;
+			wp_reset_postdata(); 
+		else : ?>
+			<div class="col">
+				<p class="h2 m-0 p-0">
+					No result found.
+				</p>
+			</div>
+		<?php endif;
+	endif;
+	wp_die(); // this is required to return a proper result
+}
+
+add_filter( 'wp_ajax_nopriv_cgi_team_search', 'cgi_team_search' );
+add_filter( 'wp_ajax_cgi_team_search', 'cgi_team_search' );
+
+function cgi_testimonials_shortcode( $atts ) {
+	ob_start();
+	$cgi_industry = '';
+	$cgi_services = '';
+	
+	if (is_singular('industries')) {
+		$cgi_industry = get_the_ID();
+	}
+	
+	if (is_singular('services')) {
+		$cgi_services = get_the_ID();
+	}
+	$a = shortcode_atts( array(
+		'cgi-industry' => $cgi_industry,
+		'cgi-service' => $cgi_services,
+		'cgi-color' => 'orange',
+		'cgi-background' => 'inherit',
+		'cgi-title' => 'Testimonials',
+		'cgi-title-color' => 'daintree',
+		'cgi-title-weight' => 'bold',
+		'cgi-text-color' => 'daintree',
+		'cgi-addclass' => ' '
+	), $atts );
+	//echo "Hello World";
+
+	$args = array(
+		'post_type' => 'testimonials',
+		'post_status' => 'publish',
+		'posts_per_page' => -1,
+		'orderby' => 'date',
+		'order'   => 'DESC',
+	);
+	
+	if ($a['cgi-industry']) {
+		$args['meta_query'][] = array(
+			'key' => 'testimonial_industry',
+			'value' => $a['cgi-industry'],
+			'compare' => 'LIKE',
+		);
+	}
+	
+	if ($a['cgi-service']) {
+		$args['meta_query'][] = array(
+					'key' => 'testimonial_service',
+					'value' => $a['cgi-service'],
+					'compare' => 'LIKE',
+			);
+	}
+	
+	
+$query = new WP_Query($args);
+	
+	
+	if ($query->have_posts()): ?>
+		<section class="testimonials section-padding <?php echo $a['cgi-color'];?> background-<?php echo $a['cgi-background'];?> <?php echo $a['cgi-addclass'] ?>">
+			<div class="section-headline container">
+				<h2 class="team-title section-title <?php echo $a['cgi-title-color']; ?> font-weight-<?php echo $a['cgi-title-weight']; ?>">
+					<?php echo $a['cgi-title']; ?>
+				</h2>
+			</div>
+			<div class="testimonial-carousel owl-carousel owl-theme">
+				<?php while ($query->have_posts()) : $query->the_post(); ?>
+				<?php //foreach($testimonials as $testimonial) : ?>
+				<div class="testimonial-carousel-item container">
+					<div class="testimonial-carousel-item-image">
+							<?php
+								$img = get_field('testimonial_image', get_the_ID());
+							?>
+						<?php if($img['sizes']['testimonial-image']):
+							$testimonial_image = $img['sizes']['testimonial-image'];
+						else:
+							$testimonial_image = '/wp-content/uploads/2022/04/testimonial-item-image-placeholder.jpg';
+						endif; ?>
+						<img src="<?php echo $testimonial_image; ?>" alt="">
+					</div>
+					<div class="testimonial-carousel-item-content">
+						<?php  $testimonial_content = get_field('testimonial_content', get_the_ID()  ) ?>
+						<?php if ($testimonial_content): ?>
+							 <p class="testimonial-carousel-item-content-text <?php echo $a['cgi-text-color']; ?>">
+								<?php echo nl2br($testimonial_content); ?>
+							</p>	
+						<?php endif ?>
+						<?php if (get_the_title($testimonial->ID)): ?>
+							<p class="testimonial-carousel-item-content-name d-block <?php echo $a['cgi-text-color']; ?>">
+								<?php echo get_the_title(); ?>
+							</p>
+						<?php endif ?>
+					</div>
+				</div>
+				<?php endwhile; ?>
+				<?php wp_reset_postdata(); ?>
+			</div>
+	  
+		</section>
+	<?php endif;
+	return ob_get_clean();
+}
+add_shortcode( 'cgi-testimonials', 'cgi_testimonials_shortcode' );
+
+function cgi_blogs_shortcode( $atts ) {
+	ob_start();
+	$a = shortcode_atts( array(
+		'cgi-color' => 'orange',
+		'cgi-background' => 'inherit',
+		'cgi-title' => 'Blogs',
+		'cgi-title-color' => 'daintree',
+		'cgi-title-weight' => 'bold',
+		'cgi-show' => 6,
+		'cgi-addclass' => ' '
+	), $atts );
+	//echo "Hello World";
+	$query = new WP_Query( array(
+		'post_type' => 'post',
+		'post_status' => 'publish',
+		'posts_per_page' => $a['cgi-show'],
+		'orderby' => 'date',
+		'order'   => 'DESC',
+	));
+	if ($query->have_posts()): ?>
+		<section class="blog section-padding <?php echo $a['cgi-color'];?> background-<?php echo $a['cgi-background'];?> <?php echo $a['cgi-addclass'] ?>">
+			<div class="section-headline container">
+				 <h2 class="section-title <?php echo $a['cgi-title-color']; ?> font-weight-<?php echo $a['cgi-title-weight']; ?>">
+					<?php echo $a['cgi-title']; ?>
+				</h2>
+			</div>
+			<div class="blog-carousel owl-carousel owl-theme">
+				<?php while ($query->have_posts()) : $query->the_post(); ?>
+				<article class="blog-carousel-item container">
+					<div class="blog-carousel-item-wrapper">
+						<div class="blog-carousel-item-image">
+							<?php if(get_the_post_thumbnail_url(get_the_ID(),'full')):
+								$blog_image = get_the_post_thumbnail_url(get_the_ID(),'full');
+							else:
+								$blog_image = '/wp-content/uploads/2022/03/AdobeStock_313381129.jpg';
+							endif; ?>
+							<img src="<?php echo $blog_image; ?>" alt="">
+						</div>
+						<div class="blog-carousel-item-content">
+							<?php if (get_the_title()): ?>
+							<h3 class="blog-carousel-item-content-title">
+								<?php echo get_the_title(); ?>
+							</h3>
+						<?php endif ?>
+						<?php if (get_the_content()): ?>
+							 <p class="blog-carousel-item-content-desc">
+							 	<?php if (get_post_meta(get_the_ID(), '_yoast_wpseo_metadesc', true)):
+							 		echo wp_trim_words( get_post_meta(get_the_ID(), '_yoast_wpseo_metadesc', true), 20, '...' );
+							 	else:
+							 		echo wp_trim_words( get_the_excerpt(), 20, '...' );
+							 	endif ?>
+							</p>	
+						<?php endif ?>
+							<a href="<?php echo get_the_permalink(); ?>" class="btn-learnmore">
+								Read More <span class="icon-cg-more-right"></span>
+							</a>
+						</div>  
+					</div>
+				</article>
+				<?php endwhile; ?>
+				<?php wp_reset_postdata(); ?>
+			</div>
+		</section>
+	<?php endif;
+	return ob_get_clean();
+}
+add_shortcode( 'cgi-blogs', 'cgi_blogs_shortcode' );
+
+function cgi_page_information_shortcode( $atts ) {
+	ob_start();
+	$a = shortcode_atts( array(
+		'cgi-color' => 'orange',
+		'cgi-background' => 'inherit',
+		'cgi-title-color' => 'daintree',
+		'cgi-title-weight' => 'bold',
+		'cgi-text-color' => 'daintree',
+		'cgi-addclass' => ' '
+	), $atts );
+	//echo "Hello World";
+	if (have_rows('page_information')):
+		$counter = 1;
+		while(have_rows('page_information')) : the_row();
+			if (get_sub_field('title') && get_sub_field('link') && (get_sub_field('image') || get_sub_field('video'))):
+				$get_remainder = $counter % 2;
+				if ($get_remainder == 1): ?>
+				<section class="page-info section-padding odd <?php echo $a['cgi-color'];?> background-<?php echo $a['cgi-background'];?> <?php echo $a['cgi-addclass'] ?>">
+					<div class="container">
+						<div class="row ">
+							<div class="col-lg-6 d-lg-flex flex-lg-row pb-4 pb-lg-0">
+								<div class="page-info-content flex-lg-grow-1" data-aos="fade-up" data-aos-easing="ease" data-aos-delay="400" data-aos-duration="1000">
+									<?php if (get_sub_field('title')): ?>
+									<h2 class="page-info-title <?php echo $a['cgi-title-color']; ?> font-weight-<?php echo $a['cgi-title-weight']; ?>">
+										<?php echo get_sub_field('title'); ?>
+									</h2>
+									<?php endif ?>
+									<?php if (get_sub_field('content')): ?>
+									<div class="page-info-description <?php echo $a['cgi-text-color']; ?>">
+										<?php echo get_sub_field('content'); ?>
+									</div>
+									<?php endif ?>
+									<?php if (get_sub_field('link')): ?>
+									<a class="page-info-btn btn-learnmore mb-5 <?php echo $a['cgi-text-color']; ?>" href="<?php echo get_sub_field('link'); ?>">
+										<span class="btn-text"><?php echo get_sub_field('link_text') ?: 'Learn More'  ?> </span><span class="icon-cg-more-right"></span>
+									</a>
+									<?php endif ?>
+								</div>  
+							</div>
+							<div class="col-lg-6">
+								<div class="page-info-video" data-aos-duration="1000" data-aos="fade-in" data-aos-easing="ease" data-aos-delay="400">
+									<?php if (get_sub_field('image') &&  get_sub_field('image_or_video')): ?>
+									<img class="img-fluid" src="<?php echo get_sub_field('image')['url']; ?>">
+									<?php else: ?>
+									<div class="embed-container">
+										<?php the_sub_field('video'); ?>
+									</div>
+									<?php endif ?>
+								</div>
+							</div>
+						</div>
+					</div>
+				</section>
+				<?php else: ?>
+				<section class="page-info section-padding even <?php echo $a['cgi-color'];?> background-<?php echo $a['cgi-background'];?> <?php echo $a['cgi-addclass'] ?>">
+					<div class="container">
+						<div class="row">
+							<div class="col-lg-6 d-none d-lg-block">
+								<div class="page-info-video" data-aos-duration="1000" data-aos="fade-in" data-aos-easing="ease" data-aos-delay="400">
+									<?php if (get_sub_field('image')): ?>
+									<img class="img-fluid" src="<?php echo get_sub_field('image')['url']; ?>">
+									<?php else: ?>
+									<div class="embed-container">
+										<?php the_sub_field('video'); ?>
+									</div>
+									<?php endif ?>
+								</div>
+							</div>
+							<div class="col-lg-6 d-lg-flex flex-lg-row pb-4 pb-lg-0">
+								<div class="page-info-content flex-lg-grow-1" data-aos="fade-up" data-aos-easing="ease" data-aos-delay="400" data-aos-duration="1000">
+									<?php if (get_sub_field('title')): ?>
+									<h2 class="page-info-title <?php echo $a['cgi-title-color']; ?> font-weight-<?php echo $a['cgi-title-weight']; ?>">
+										<?php echo get_sub_field('title'); ?>
+									</h2>
+									<?php endif ?>
+									<?php if (get_sub_field('content')): ?>
+									<div class="page-info-description <?php echo $a['cgi-text-color']; ?>">
+										<?php echo get_sub_field('content'); ?>
+									</div>
+									<?php endif ?>
+									<?php if (get_sub_field('link')): ?>
+									<a class="page-info-btn btn-learnmore mb-5 <?php echo $a['cgi-text-color']; ?>" href="<?php echo get_sub_field('link'); ?>">
+										<span class="btn-text"><?php echo get_sub_field('link_text') ?: 'Learn More'  ?></span><span class="icon-cg-more-right"></span>
+									</a>
+									<?php endif ?>
+								</div>  
+							</div>
+							<div class="col-lg-6 p-lg-0 d-block d-lg-none">
+								<div class="page-info-video" data-aos="fade-in" data-aos-easing="ease" data-aos-delay="400" data-aos-duration="1000">
+									<?php if (get_sub_field('image')): ?>
+									<img class="img-fluid" src="<?php echo get_sub_field('image')['url']; ?>">
+									<?php else: ?>
+									<div class="embed-container">
+										<?php the_sub_field('video'); ?>
+									</div>
+									<?php endif ?>
+								</div>
+							</div>
+						</div>
+					</div>
+				</section>
+				<?php endif;
+				$counter = $counter+1;
+			endif;
+		endwhile;
+	endif;
+return ob_get_clean();
+}
+add_shortcode( 'cgi-page-information', 'cgi_page_information_shortcode' );
+
+function cgi_home_page_information_shortcode( $atts ) {
+	ob_start();
+	$a = shortcode_atts( array(
+		'cgi-color' => 'orange',
+		'cgi-background' => 'inherit',
+		'cgi-title-color' => 'daintree',
+		'cgi-title-weight' => 'bold',
+		'cgi-text-color' => 'daintree',
+		'cgi-addclass' => ' '
+	), $atts );
+	//echo "Hello World";
+	if (have_rows('page_information')):
+		$counter = 1;
+		while(have_rows('page_information')) : the_row();
+			if (get_sub_field('title') && get_sub_field('link') && (get_sub_field('image') || get_sub_field('video'))):
+				$get_remainder = $counter % 2;
+				if ($get_remainder <> 1): ?>
+				<section class="page-info section-padding odd <?php echo $a['cgi-color'];?> background-<?php echo $a['cgi-background'];?> <?php echo $a['cgi-addclass'] ?>">
+					<div class="container px-lg-0">
+						<div class="row">
+							<div class="col-lg-6 d-lg-flex flex-lg-row pb-4 pb-lg-0">
+								<div class="page-info-content flex-lg-grow-1" data-aos="fade-up" data-aos-easing="ease" data-aos-delay="400" data-aos-duration="1000" >
+									<?php if (get_sub_field('title')): ?>
+									<h2 class="page-info-title <?php echo $a['cgi-title-color']; ?> font-weight-<?php echo $a['cgi-title-weight']; ?>">
+										<?php echo get_sub_field('title'); ?>
+									</h2>
+									<?php endif ?>
+									<?php if (get_sub_field('content')): ?>
+									<div class="page-info-description <?php echo $a['cgi-text-color']; ?>">
+										<?php echo get_sub_field('content'); ?>
+									</div>
+									<?php endif ?>
+									<?php if (get_sub_field('link')): ?>
+									<a class="page-info-btn btn-learnmore mb-5 <?php echo $a['cgi-text-color']; ?>" href="<?php echo get_sub_field('link'); ?>">
+										<span class="btn-text"><?php echo get_sub_field('link_text') ?: 'Learn More'  ?></span> <span class="icon-cg-more-right"></span>
+									</a>
+									<?php endif ?>
+								</div>  
+							</div>
+							<div class="col-lg-6">
+								<div class="page-info-video" data-aos="fade-in" data-aos-easing="ease" data-aos-delay="400" data-aos-duration="1000">
+									<?php if (get_sub_field('image')): ?>
+									<img class="img-fluid" src="<?php echo get_sub_field('image')['url']; ?>">
+									<?php else: ?>
+									<div class="embed-container">
+										<?php the_sub_field('video'); ?>
+									</div>
+									<?php endif ?>
+								</div>
+							</div>
+						</div>
+					</div>
+				</section>
+				<?php else: ?>
+				<section class="page-info section-padding even <?php echo $a['cgi-color'];?> background-<?php echo $a['cgi-background'];?> <?php echo $a['cgi-addclass'] ?>">
+					<div class="container">
+						<div class="row">
+							<div class="col-lg-6 d-none d-lg-block">
+								<div class="page-info-video" data-aos="fade-in" data-aos-easing="ease" data-aos-delay="400" data-aos-duration="1000">
+									<?php if (get_sub_field('image')): ?>
+									<img class="img-fluid" src="<?php echo get_sub_field('image')['url']; ?>">
+									<?php else: ?>
+									<div class="embed-container">
+										<?php the_sub_field('video'); ?>
+									</div>
+									<?php endif ?>
+								</div>
+							</div>
+							<div class="col-lg-6 d-lg-flex flex-lg-row pb-4 pb-lg-0">
+								<div class="page-info-content flex-lg-grow-1" data-aos="fade-up" data-aos-easing="ease" data-aos-delay="400" data-aos-duration="1000">
+									<?php if (get_sub_field('title')): ?>
+									<h2 class="page-info-title <?php echo $a['cgi-title-color']; ?> font-weight-<?php echo $a['cgi-title-weight']; ?>">
+										<?php echo get_sub_field('title'); ?>
+									</h2>
+									<?php endif ?>
+									<?php if (get_sub_field('content')): ?>
+									<div class="page-info-description <?php echo $a['cgi-text-color']; ?>">
+										<?php echo get_sub_field('content'); ?>
+									</div>
+									<?php endif ?>
+									<?php if (get_sub_field('link')): ?>
+									<a class="page-info-btn btn-learnmore mb-5 <?php echo $a['cgi-text-color']; ?>" href="<?php echo get_sub_field('link'); ?>">
+										<span class="btn-text"><?php echo get_sub_field('link_text') ?: 'Learn More'  ?></span> <span class="icon-cg-more-right"></span>
+									</a>
+									<?php endif ?>
+								</div>  
+							</div>
+							<div class="col-lg-6 p-lg-0 d-block d-lg-none">
+								<div class="page-info-video" data-aos="fade-in" data-aos-easing="ease" data-aos-delay="400" data-aos-duration="1000">
+									<?php if (get_sub_field('image')): ?>
+									<img class="img-fluid" src="<?php echo get_sub_field('image')['url']; ?>">
+									<?php else: ?>
+									<div class="embed-container">
+										<?php the_sub_field('video'); ?>
+									</div>
+									<?php endif ?>
+								</div>
+							</div>
+						</div>
+					</div>
+				</section>
+				<?php endif;
+				$counter = $counter+1;
+			endif;
+		endwhile;
+	endif;
+return ob_get_clean();
+}
+add_shortcode( 'cgi-home-page-information', 'cgi_home_page_information_shortcode' );
+
+function cgi_team_shortcode( $atts ) {
+	ob_start();
+	$a = shortcode_atts( array(
+		'cgi-color' => 'orange',
+		'cgi-title' => 'Meet the team',
+		'cgi-addclass' => ' '
+	), $atts );
+	//echo "Hello World";
+	if (is_singular('industries') || is_singular('services') || get_the_ID() === 5382 || get_the_ID() === 5368 ):
+		if (get_field('team_members')) :
+			$team_members = get_field('team_members');
+		else:
+			$team_members = array(
+				'robb-flint' => 5451,
+				'jonathan-goldstein' =>5452,
+				'azkar-choudhry' => 5453
+			);
+		endif;
+	endif; ?>
+	<section class="team section-padding <?php echo $a['cgi-color'];?> <?php echo $a['cgi-addclass'] ?>">
+		<div class="container">
+			<div class="section-headline">
+				<h2 class="section-title"><?php echo $a['cgi-title']; ?></h2>
+			</div>
+			<div class="row team-items owl-carousel owl-theme">
+				<?php 
+					$counter = 1;
+					foreach ($team_members as $key => $team_member) : $counterL = $counter++ * 200; ?>
+					<div class="col-md-4 team-item" data-aos="fade-in" data-aos-easing="ease" data-aos-delay="<?= $counterL ?>" data-aos-duration="1000" >
+						 <div class="team-item-image" >
+							<?php if(get_field('cgi_member_image',$team_member)):
+							$team_image = get_field('cgi_member_image', $team_member)['url'];
+							else:
+							$team_image = '/wp-content/uploads/2022/03/9e9d13d59cd96c4d06b80d4066ac6abd.jpg';
+							endif; ?>
+							<img src="<?php echo $team_image; ?>" alt="<?php echo $a['cgi-title']; ?>">
+						</div>
+						
+							
+							<div class="team-item-info">
+	
+								<div class="d-flex justify-content-between">
+									<h3 class="team-item-info-name mt-0">
+										<?php echo get_the_title($team_member); ?>
+									</h3>
+									
+									<div class="team-item-linkin">
+										<a href="<?php echo get_field('cgi_linkedin', $team_member) ?>" target="_blank"><span class="icon-cg-linkedin"></span></a>
+									</div>
+								</div>
+									
+								<p class="team-item-info-role"><?php echo get_field('cgi_position', $team_member) ?></p>
+							</div>
+							
+			
+
+					</div>
+				<?php endforeach; ?>
+			</div>
+		</div>
+	</section>
+	<?php return ob_get_clean();
+}
+add_shortcode( 'cgi-team', 'cgi_team_shortcode' );
+
+function cgi_help_services_shortcode( $atts ) {
+	ob_start();
+	$a = shortcode_atts( array(
+		'cgi-color' => 'orange',
+		'cgi-background' => 'light-gray',
+		'cgi-with-box' => false,
+		'cgi-addclass' => ' '
+	), $atts );
+	//echo "Hello World";
+	$id = get_the_id();
+	$how_we_help = get_field('how_we_help_item', $id); 
+	$help_h2_title = get_field('how_we_help_title', $id ) ?: 'How We Support You';
+	if ($how_we_help) : ?>
+	<section class="industry section-padding <?php echo ($a['cgi-with-box']) ? 'section-box-background' : '' ?> <?php echo $a['cgi-color'];?> <?php echo 'background-'.$a['cgi-background'] ?> <?php echo $a['cgi-addclass'] ?> ">
+		<div class="container">
+			<div class="section-headline">
+				<h2 class="section-title"><?php echo $help_h2_title; ?></h2>
+			</div>
+			<div class="row card-article-items owl-carousel owl-theme">
+			<?php foreach($how_we_help as $help) :  
+				$title	= $help['help_title'];
+				$excerpt = $help['help_excerpt'];
+				$image	= $help['help_image'];
+				$cta	= $help['help_add_cta']; 
+				$cta_label	= $help['help_cta_label'];
+				$cta_link	= $help['help_cta_link']; ?>
+				<div class="card-article-item col-md-6">
+					<div class="card-article-item-image">
+						<?php if($image):
+							$help_image = $image['url'];
+						else:
+							$help_image = '/wp-content/uploads/2022/03/AdobeStock_313381129.jpg';
+						endif; ?>
+						<img src="<?php echo $help_image; ?>" alt="<?php echo $title  ?>"  data-aos="fade-in" data-aos-easing="ease" data-aos-delay="200" data-aos-duration="1000"/>
+					</div>
+					<div class="card-article-item-content" data-aos="fade-up" data-aos-easing="ease" data-aos-delay="200" data-aos-duration="1000">
+						<?php if ($title): ?>
+							<h3 class="card-article-item-content-title">
+								<?php echo $title; ?>
+							</h3>
+						<?php endif ?>
+						<?php if ($excerpt): ?>
+							<div class="card-article-item-content-description">
+								<?php echo nl2br($excerpt); ?>
+							</div>	
+						<?php endif ?>
+						<?php if ($cta && ($cta_label && $cta_link)): ?>
+							<a href="<?php echo $cta_link; ?>" class="btn-learnmore">
+								<span class="btn-text"><?php echo $cta_label; ?></span> <span class="icon-cg-more-right"></span>
+							</a>
+						<?php endif ?>
+					</div>
+				</div>
+			<?php endforeach; ?>
+			</div>
+				<?php if(get_field('add_primary_button')) : ?>
+			<div class="how-we-help-primary pt-5 text-center">
+				<a href="<?php echo get_field('primary_cta')['primary_cta_url']; ?>" class="btn-learnmore btn-primary-cta px-5 py-3 mt-4 btn-rounded btn-outline-<?= $a['cgi-color'] ?> <?= $a['cgi-color'] ?>">
+					<span class="btn-text"><?php echo get_field('primary_cta')['primary_cta_text'] ?: 'Click Here'; ?></span> <span class="icon-cg-more-right"></span>
+				</a>
+			</div>
+			<?php endif; ?>
+		</div>
+	</section>
+	<?php endif; ?>
+	<?php return ob_get_clean();
+}
+add_shortcode( 'cgi-help-services', 'cgi_help_services_shortcode' );
+
+function cgi_help_industries_shortcode( $atts ) {
+	ob_start();
+	$a = shortcode_atts( array(
+		'cgi-color' => 'orange',
+		'cgi-background' => 'light-gray',
+		'cgi-with-box' => false,
+		'cgi-addclass' => ' '
+	), $atts );
+	//echo "Hello World";
+	$id = get_the_id();
+	$how_we_help = get_field('how_we_help_item', $id); 
+	$help_h2_title = get_field('how_we_help_title', $id ) ?: 'How We Support You';
+	if ($how_we_help) : ?>
+	<section class="industry section-padding <?php echo ($a['cgi-with-box']) ? 'section-box-background' : '' ?> <?php echo $a['cgi-color'];?> <?php echo 'background-'.$a['cgi-background'] ?> <?php echo $a['cgi-addclass'] ?> ">
+		<div class="container">
+			<div class="section-headline">
+				<h2 class="section-title"><?php echo $help_h2_title; ?></h2>
+			</div>
+			<div class="row card-article-items owl-carousel owl-theme">
+			<?php foreach($how_we_help as $help) :  
+				$title	= $help['help_title'];
+				$excerpt = $help['help_excerpt'];
+				$image	= $help['help_image'];
+				$cta	= $help['help_add_cta']; 
+				$cta_label	= $help['help_cta_label'];
+				$cta_link	= $help['help_cta_link']; ?>
+				<div class="card-article-item col-md-6">
+					<div class="card-article-item-image">
+						<?php if($image):
+							$help_image = $image['url'];
+						else:
+							$help_image = '/wp-content/uploads/2022/03/AdobeStock_313381129.jpg';
+						endif; ?>
+						<img src="<?php echo $help_image; ?>" alt="<?php echo $title  ?>"  data-aos="fade-in" data-aos-easing="ease" data-aos-delay="200" data-aos-duration="1000"/>
+					</div>
+					<div class="card-article-item-content" data-aos="fade-up" data-aos-easing="ease" data-aos-delay="200" data-aos-duration="1000">
+						<?php if ($title): ?>
+							<h3 class="card-article-item-content-title">
+								<?php echo $title; ?>
+							</h3>
+						<?php endif ?>
+						<?php if ($excerpt): ?>
+							<div class="card-article-item-content-description">
+								<?php echo nl2br($excerpt); ?>
+							</div>	
+						<?php endif ?>
+						<?php if ($cta && ($cta_label && $cta_link)): ?>
+							<a href="<?php echo $cta_link; ?>" class="btn-learnmore">
+								<span class="btn-text"><?php echo $cta_label; ?></span> <span class="icon-cg-more-right"></span>
+							</a>
+						<?php endif ?>
+					</div>
+				</div>
+			<?php endforeach; ?>
+				
+			</div>
+			
+			<?php if(get_field('add_primary_button')) : ?>
+			<div class="how-we-help-primary pt-5 text-center">
+				<a href="<?php echo get_field('primary_cta')['primary_cta_url']; ?>" class="btn-learnmore btn-primary-cta px-5 py-3 mt-4 btn-rounded btn-outline-<?= $a['cgi-color'] ?> <?= $a['cgi-color'] ?>">
+					<span class="btn-text"><?php echo get_field('primary_cta')['primary_cta_text'] ?: 'Click Here'; ?></span> <span class="icon-cg-more-right"></span>
+				</a>
+			</div>
+			<?php endif; ?>
+		</div>
+	</section>
+	<?php endif; ?>
+	<?php return ob_get_clean();
+}
+add_shortcode( 'cgi-help-industries', 'cgi_help_industries_shortcode' );
